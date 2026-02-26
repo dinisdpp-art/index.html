@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Geography Quiz</title>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #game-container {
+            background-color: var(--secondary);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: #0f3460;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--accent);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #help-btn {
+            background-color: #28a745;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        #next-btn {
+            background-color: var(--accent);
+            margin-top: 20px;
+            display: none;
+            width: 100%;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="stats">
+        <span>Pontos: <span id="score">0</span></span>
+        <span>Recorde: <span id="high-score">0</span></span>
+        <span>Questão: <span id="q-count">1</span>/20</span>
+    </div>
+
+    <div id="quiz-screen">
+        <h2 id="question">Qual é a capital de...?</h2>
+        <div class="options-grid" id="options">
+            </div>
+        <button id="help-btn" onclick="use5050()">Ajuda 50/50 (Vale 1pt)</button>
+        <button id="next-btn" onclick="nextQuestion()">Próxima Pergunta</button>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h1>Fim de Jogo!</h1>
+        <p>Sua pontuação final: <span id="final-score">0</span></p>
+        <button onclick="startGame()">Jogar Novamente</button>
+    </div>
+</div>
+
+<script>
+    const data = [
+        { p: "Angola", c: "Luanda", o: ["Benguela", "Huambo", "Lubango"] },
+        { p: "Portugal", c: "Lisboa", o: ["Porto", "Coimbra", "Braga"] },
+        { p: "Brasil", c: "Brasília", o: ["Rio de Janeiro", "São Paulo", "Salvador"] },
+        { p: "EUA", c: "Washington D.C.", o: ["Nova York", "Los Angeles", "Chicago"] },
+        { p: "França", c: "Paris", o: ["Lyon", "Marselha", "Nice"] },
+        { p: "Japão", c: "Tóquio", o: ["Osaka", "Quioto", "Hiroshima"] },
+        { p: "Nigéria", c: "Abuja", o: ["Lagos", "Kano", "Ibadan"] },
+        { p: "Argentina", c: "Buenos Aires", o: ["Rosário", "Córdoba", "Mendoza"] },
+        { p: "Canadá", c: "Ottawa", o: ["Toronto", "Vancouver", "Montreal"] },
+        { p: "Egito", c: "Cairo", o: ["Alexandria", "Gizé", "Luxor"] },
+        { p: "Itália", c: "Roma", o: ["Milão", "Nápoles", "Veneza"] },
+        { p: "China", c: "Pequim", o: ["Xangai", "Cantão", "Shenzhen"] },
+        { p: "África do Sul", c: "Pretória", o: ["Cidade do Cabo", "Joanesburgo", "Durban"] },
+        { p: "Alemanha", c: "Berlim", o: ["Munique", "Hamburgo", "Colônia"] },
+        { p: "Espanha", c: "Madrid", o: ["Barcelona", "Sevilha", "Valência"] },
+        { p: "Austrália", c: "Camberra", o: ["Sydney", "Melbourne", "Perth"] },
+        { p: "Quênia", c: "Nairobi", o: ["Mombaça", "Kisumu", "Nakuru"] },
+        { p: "Índia", c: "Nova Deli", o: ["Bombaim", "Bangalore", "Calcutá"] },
+        { p: "Rússia", c: "Moscovo", o: ["São Petersburgo", "Novosibirsk", "Ecaterimburgo"] },
+        { p: "México", c: "Cidade do México", o: ["Guadalajara", "Monterrei", "Cancún"] }
+    ];
+
+    let currentQuestions = [];
+    let currentIdx = 0;
+    let score = 0;
+    let usedHelp = false;
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function startGame() {
+        score = 0;
+        currentIdx = 0;
+        // Embaralha países e pega os primeiros 20
+        currentQuestions = shuffle([...data]).slice(0, 20);
+        
+        document.getElementById('score').innerText = score;
+        document.getElementById('high-score').innerText = localStorage.getItem('geoHighScore') || 0;
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        
+        showQuestion();
+    }
+
+    function showQuestion() {
+        usedHelp = false;
+        const q = currentQuestions[currentIdx];
+        document.getElementById('q-count').innerText = currentIdx + 1;
+        document.getElementById('question').innerText = `Qual é a capital de ${q.p}?`;
+        document.getElementById('help-btn').disabled = false;
+        document.getElementById('next-btn').style.display = 'none';
+
+        // Preparar opções
+        let options = shuffle([q.c, ...q.o]);
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = '';
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, q.c, btn);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, correct, btn) {
+        const buttons = document.querySelectorAll('#options button');
+        buttons.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            btn.style.backgroundColor = "#28a745";
+            score += usedHelp ? 1 : 3;
+        } else {
+            btn.style.backgroundColor = "#dc3545";
+            // Mostrar a correta
+            buttons.forEach(b => {
+                if(b.innerText === correct) b.style.backgroundColor = "#28a745";
+            });
+        }
+
+        document.getElementById('score').innerText = score;
+        document.getElementById('next-btn').style.display = 'block';
+        document.getElementById('help-btn').disabled = true;
+    }
+
+    function use5050() {
+        usedHelp = true;
+        const q = currentQuestions[currentIdx];
+        const buttons = Array.from(document.querySelectorAll('#options button'));
+        
+        // Filtra apenas as erradas
+        let wrongButtons = buttons.filter(b => b.innerText !== q.c);
+        // Embaralha e esconde 2
+        shuffle(wrongButtons).slice(0, 2).forEach(b => b.style.visibility = 'hidden');
+        
+        document.getElementById('help-btn').disabled = true;
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < currentQuestions.length) {
+            showQuestion();
+        } else {
+            endGame();
+        }
+    }
+
+    function endGame() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('final-score').innerText = score;
+
+        const highScore = localStorage.getItem('geoHighScore') || 0;
+        if (score > highScore) {
+            localStorage.setItem('geoHighScore', score);
+        }
+    }
+
+    startGame();
+</script>
+</body>
+</html>
